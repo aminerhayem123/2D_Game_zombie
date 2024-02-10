@@ -13,10 +13,10 @@ public class lightController : MonoBehaviour
     {
         CheckForEnemy();
 
-        // Check if the red light is on
-        if (IsRedLightOn() && currentEnemy != null)
+        // Check if the red light is on and there's a current enemy within danger range
+        if (IsRedLightOn() && currentEnemy != null && IsEnemyWithinDangerRange())
         {
-            // If the red light is on and there's a current enemy, make the enemy follow the player
+            // If the conditions are met, make the enemy follow the player
             MoveEnemyTowardsPlayer();
         }
     }
@@ -82,6 +82,13 @@ public class lightController : MonoBehaviour
     public float GetDangerRange()
     {
         return dangerRange;
+    }
+
+    // Check if the current enemy is within danger range
+    bool IsEnemyWithinDangerRange()
+    {
+        float distance = Vector3.Distance(transform.position, currentEnemy.transform.position);
+        return distance <= dangerRange;
     }
 
     void MoveEnemyTowardsPlayer()

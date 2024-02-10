@@ -1,67 +1,180 @@
 using UnityEngine;
+using System.Collections;
 
 public class Enemy : MonoBehaviour
 {
     public int health = 1;
+    public AudioClip attackSound;
+    private AudioSource audioSource;
     private Animator animator;
     private GameObject player;
-    private lightController lightController;
+    private lightController lightController; // Adjusted the case here
+    private bool hasPlayedAttackSound = false;
+    public float attackRange = 0f;
+    private bool isNightModeActive = false;
+    private float nightModeTimer = 0f;
+    public float nightModeDuration = 4f; // Reduced to 4 seconds for testing
+    public float nightModeSpeedIncrease = 2f;
+    private float nightAnimationTimer = 0f;
+    private bool isNightAnimationTriggered = false;
 
     void Start()
     {
-        // Get the Animator component attached to the same GameObject
         animator = GetComponent<Animator>();
-
-        // Find the player by tag
         player = GameObject.FindGameObjectWithTag("caracter");
+        lightController = FindObjectOfType<lightController>(); // Adjusted the case here
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
 
-        // Find the lightController script in the scene
-        lightController = FindObjectOfType<lightController>();
+        // Start the coroutine for triggering night mode
+        StartCoroutine(TriggerNightMode());
+    }
+
+    IEnumerator TriggerNightMode()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(4f); // Wait for 4 seconds
+            StartNightMode();
+        }
+    }
+
+    void StartNightMode()
+    {
+        isNightModeActive = true;
+        nightModeTimer = 0f;
+        animator.SetBool("night", true);
+        // Additional logic for starting night mode can be added here
+    }
+
+    void EndNightMode()
+    {
+        isNightModeActive = false;
+        nightModeTimer = 2f;
+        animator.SetBool("night", false);
+        // Additional logic for ending night mode can be added here
     }
 
     void Update()
     {
-        // Check if the red light is on and the player is within danger range
-        if (lightController != null && lightController.IsRedLightOn() && IsPlayerWithinDangerRange())
+        if (lightController != null && IsPlayerWithinDangerRange())
         {
-            // Move towards the player (you can customize this based on your movement logic)
             MoveTowardsPlayer();
+
+            if (ShouldAttack())
+            {
+                Attack();
+            }
+
+            // Reset night mode timer when in danger range
+            nightModeTimer = 0f;
+            isNightAnimationTriggered = false;
+        }
+        else
+        {
+            hasPlayedAttackSound = false;
+            // Stop playing the walk animation when not in danger range
+            animator.SetBool("walk", false);
+        }
+
+        // Check and activate night mode
+        if (isNightModeActive)
+        {
+            nightModeTimer += Time.deltaTime;
+
+            if (nightModeTimer >= 10f && !isNightAnimationTriggered)
+            {
+                // Trigger night animation after 10 seconds
+                animator.SetTrigger("night");
+                isNightAnimationTriggered = true;
+            }
+
+            if (nightModeTimer >= nightModeDuration)
+            {
+                EndNightMode();
+            }
         }
     }
 
-    // Called when the enemy is damaged
+
+    void MoveTowardsPlayer()
+    {
+        // Implement your movement logic here
+
+        // If moving, set the walk animation
+        animator.SetBool("walk", true);
+    }
+
+    bool IsPlayerWithinDangerRange()
+    {
+        float distance = Vector3.Distance(transform.position, player.transform.position);
+        return distance <= attackRange;
+    }
+
+    bool ShouldAttack()
+    {
+        // Implement your attack logic here
+        return true;
+    }
+
+    void Attack()
+    {
+        // If the enemy is in night mode, player loses all health
+        if (isNightModeActive)
+        {
+            player.GetComponent<PlayerController>().LoseAllHealth();
+        }
+        else
+        {
+            // Implement your regular attack logic here
+
+            // Play the attack animation
+            animator.SetTrigger("attack");
+
+            PlayAttackSound();
+        }
+    }
+
+    void PlayAttackSound()
+    {
+        if (attackSound != null && !hasPlayedAttackSound)
+        {
+            audioSource.PlayOneShot(attackSound);
+            hasPlayedAttackSound = true;
+        }
+    }
+
+    // Implement the TakeDamage method
     public void TakeDamage(int damage)
     {
         health -= damage;
 
         if (health <= 0)
         {
-            // Call a method for any additional logic before destroying the enemy
             OnDeath();
         }
     }
 
-    // Called when the enemy is destroyed
     void OnDeath()
     {
-        // Trigger the death animation
+        // Trigger the die animation
         animator.SetTrigger("die");
-
-        // Add any additional logic or effects when the enemy is destroyed
-        Destroy(gameObject);
+        // Destroy the GameObject after the death animation is complete
+        Destroy(gameObject, animator.GetCurrentAnimatorStateInfo(0).length);
     }
 
-    // Move towards the player
-    void MoveTowardsPlayer()
+    void OnTriggerEnter2D(Collider2D other)
     {
-        // Assuming a simple movement towards the player (you can customize this based on your movement logic)
-        transform.position = Vector3.MoveTowards(transform.position, player.transform.position, Time.deltaTime);
+        if (other.CompareTag("caracter"))
+        {
+            Attack();
+        }
     }
-
-    // Check if the player is within danger range
-    bool IsPlayerWithinDangerRange()
+    public bool IsNightModeActive()
     {
-        float distance = Vector3.Distance(transform.position, player.transform.position);
-        return distance <= lightController.GetDangerRange();
+        return isNightModeActive;
     }
 }

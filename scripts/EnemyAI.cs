@@ -7,11 +7,14 @@ public class EnemyAI : MonoBehaviour
     public GameObject enemyPrefab; // Enemy prefab for respawning
 
     private SpriteRenderer spriteRenderer;
+    private Animator animator;
+    private bool hasIncreasedSpeed = false; // Flag to track speed increase
 
     void Start()
     {
         // Get the SpriteRenderer component attached to the same GameObject
         spriteRenderer = GetComponent<SpriteRenderer>();
+        animator = GetComponent<Animator>();
     }
 
     void Update()
@@ -25,6 +28,14 @@ public class EnemyAI : MonoBehaviour
 
             // Flip the enemy sprite based on the movement direction
             FlipSprite(direction.x);
+
+            // Check if night animator is active and speed has not been increased yet
+            if (animator.GetBool("night") && !hasIncreasedSpeed)
+            {
+                // Increase speed by 1 when night animator is active
+                speed += 1f * Time.deltaTime;
+                hasIncreasedSpeed = true; // Set the flag to true to indicate speed increase
+            }
         }
     }
 
